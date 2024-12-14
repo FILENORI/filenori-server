@@ -2,74 +2,94 @@ import socket
 import json
 import os
 
-def send_request(data, host="127.0.0.1", port=12345):
+def send_request(data, client):
     """Send JSON request to the server and receive a response."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
-        client.connect((host, port))
-        client.sendall(json.dumps(data).encode())
+    print(data)
+    client.sendall(json.dumps(data).encode()+ b"\n")  # Send data
+    print('send data')
 
-        # Receive response
-        response = b""
-        while True:
-            chunk = client.recv(2048)
-            if not chunk:
-                break
-            response += chunk
+    response = b""
+    print('b')
+    while True:
+        chunk = client.recv(2048)
+        if b"<END>" in chunk:
+            response += chunk.split(b'<END>')[0]
+            break
+        print(chunk)
+        response += chunk
+    print('response')
+    print(response)
+    print("Raw Response:", response.decode())
+    return json.loads(response.decode())
 
-        print("Raw Response:", response.decode())
-        return json.loads(response.decode())
-
-def upload_file(file_path, file_name, host="127.0.0.1", port=12345):
+def upload_file(file_path, file_name, client):
     """Upload a file to the server."""
     with open(file_path, "rb") as f:
         data = f.read()
 
-    # Send upload request with file content
+    print("send start")
+    # Send upload metadata
     send_request({
         "action": "upload",
         "file_name": file_name,
         "file_size": len(data),
-        "content": data.decode(errors='ignore')
-    }, host, port)
+    }, client)
+    print("metadata sent")
 
-def list_files(host="127.0.0.1", port=12345):
+    # Send raw file data
+    client.sendall(data)
+    print("All data sent to server")
+
+    response = b""
+    while True:
+        print('a')
+        chunk = client.recv(2048)
+        if b"<END>" in chunk:
+            response += chunk.split(b'<END>')[0]
+            break
+        response += chunk
+        print('response')
+        print(response)
+        print("Raw Response:", response.decode())
+        return json.loads(response.decode())
+    print(response)
+    print(f"File {file_name} uploaded successfully.")
+
+def list_files(client):
     """List files available on the server."""
-    response = send_request({"action": "list_files"}, host, port)
+    response = send_request({"action": "list_files"}, client)
+    print(response)
     print("Available Files:", response.get("files", []))
     return response.get("files", [])
 
-def download_file(file_name, save_path, host="127.0.0.1", port=12345):
+def download_file(file_name, save_path, client):
     """Request a file download from the server."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
-        client.connect((host, port))
+    # Send download request
+    client.sendall(json.dumps({"action": "download", "file_name": file_name}).encode())
 
-        # Send download request
-        client.sendall(json.dumps({"action": "download", "file_name": file_name}).encode())
-
-        # Receive file data
-        with open(save_path, "wb") as f:
-            while True:
-                chunk = client.recv(2048)
-                if not chunk:
-                    break
-                f.write(chunk)
+    # Receive file data
+    with open(save_path, "wb") as f:
+        while True:
+            chunk = client.recv(2048)
+            if b"<END>" in chunk:
+                f.write(chunk.split(b'<END>')[0])
+                break
+            f.write(chunk)
 
     print(f"File {file_name} downloaded and saved to {save_path}")
 
 # Test all functions
 if __name__ == "__main__":
-    # Test upload
-    test_file = "test_upload.txt"
-    with open(test_file, "w") as f:
-        f.write("This is a test file for upload.\n")
+    # Create a persistent client socket
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
+        client.connect(("127.0.0.1", 12345))
 
-    upload_file(test_file, "server_test_upload.txt")
+        # Test file upload
+        test_file = "test_image.webp"
+        upload_file(test_file, "server_test_image.webp", client)
 
-    # Test file listing
-    list_files()
+        # Test file listing
+        list_files(client)
 
-    # Test download
-    download_file("server_test_upload.txt", "downloaded_test_upload.txt")
-
-    # Cleanup local test file
-    os.remove(test_file)
+        # Test file download
+        download_file("server_test_image.webp", "downloaded_test_image.webp", client)
