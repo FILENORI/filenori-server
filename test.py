@@ -62,10 +62,10 @@ def list_files(client):
     print("Available Files:", response.get("files", []))
     return response.get("files", [])
 
-def download_file(file_name, save_path, client):
+def download_file(file_id, save_path, client):
     """Request a file download from the server."""
     # Send download request
-    client.sendall(json.dumps({"action": "download", "file_name": file_name}).encode())
+    client.sendall(json.dumps({"action": "download", "file_id": file_id}).encode())
 
     # Receive file data
     with open(save_path, "wb") as f:
@@ -76,7 +76,32 @@ def download_file(file_name, save_path, client):
                 break
             f.write(chunk)
 
-    print(f"File {file_name} downloaded and saved to {save_path}")
+    print(f"File {file_id} downloaded and saved to {save_path}")
+
+def find_file(file_id, client):
+    """Find which peers have the specified file."""
+    print(f"Finding file ID: {file_id}")
+    response = send_request({"action": "find_file", "file_id": file_id}, client)
+    print(f"Peers with file ID {file_id}: {response.get('peers', [])}")
+    return response.get("peers", [])
+
+
+def list_peers(client):
+    """List all connected peers."""
+    response = send_request({"action": "list_peers"}, client)
+    print("Connected Peers:", response.get("peers", []))
+    return response.get("peers", [])
+
+def send_heartbeat(peer_ip, file_ids, client):
+    """Send a heartbeat message to the server."""
+    print(f"Sending heartbeat from peer {peer_ip} with files {file_ids}")
+    response = send_request({
+        "action": "heartbeat",
+        "peer_ip": peer_ip,
+        "files": file_ids
+    }, client)
+    print("Heartbeat response:", response)
+    return response
 
 # Test all functions
 if __name__ == "__main__":
@@ -88,8 +113,15 @@ if __name__ == "__main__":
         test_file = "test_image.webp"
         upload_file(test_file, "server_test_image.webp", client)
 
-        # Test file listing
+        # # Test file listing
         list_files(client)
 
+        list_peers(client)
+
+        file_id = "42b39d9b-dfd1-4eaa-8daa-75dfced71cf0"
+        find_file(file_id, client)
+
+        send_heartbeat("127.0.0.1", [file_id], client)
+
         # Test file download
-        download_file("server_test_image.webp", "downloaded_test_image.webp", client)
+        download_file(file_id, "downloaded_test_image.webp", client)
