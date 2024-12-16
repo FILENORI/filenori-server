@@ -10,6 +10,30 @@ using boost::asio::ip::tcp;
 using json = nlohmann::json;
 namespace fs = std::filesystem;
 
+// 업로드된 파일 정보가 저장될 JSON 파일 경로
+const std::string FILE_METADATA_JSON = "file_metadata.json";
+
+// JSON 파일에서 메타데이터 읽기
+json read_file_metadata() {
+  std::ifstream file(FILE_METADATA_JSON);
+  if (!file.is_open()) {
+    return json::array();  // JSON 파일이 없으면 빈 배열 반환
+  }
+  json metadata;
+  file >> metadata;
+  return metadata;
+}
+
+// JSON 파일에 메타데이터 저장
+void write_file_metadata(const json& metadata) {
+  std::ofstream file(FILE_METADATA_JSON, std::ios::trunc);
+  if (!file.is_open()) {
+    std::cerr << "Failed to open metadata file for writing" << std::endl;
+    return;
+  }
+  file << metadata.dump(4);  // 예쁘게 저장
+}
+
 // 파일 업로드 처리
 void handle_upload(tcp::socket& socket, const json& request_json) {
   std::string file_name = request_json["file_name"];
@@ -29,32 +53,36 @@ void handle_upload(tcp::socket& socket, const json& request_json) {
   char buffer[1024];
   std::size_t bytes_received = 0;
 
-  std::cout << "file_size" << file_size << std::endl;
   while (bytes_received < file_size) {
-    std::cout << "upload start" << std::endl;
     boost::system::error_code error;
-    std::cout << "A" << std::endl;
     size_t len = socket.read_some(boost::asio::buffer(buffer), error);
-    std::cout << len << std::endl;
 
     if (error == boost::asio::error::eof) {
-      std::cout << "upload break" << std::endl;
       break;
     } else if (error) {
       throw boost::system::system_error(error);
     }
 
-    std::cout << "file write start" << std::endl;
     file.write(buffer, len);
-    std::cout << "file write end" << std::endl;
     bytes_received += len;
-    std::cout << "bytes_received" << bytes_received << std::endl;
   }
-  std::cout << "while end" << std::endl;
   file.close();
-  std::cout << "upload success" << std::endl;
+
+  // 파일 메타데이터 저장
+  json metadata = read_file_metadata();
+  metadata.push_back({{"name", file_name}, {"size", file_size}});
+  write_file_metadata(metadata);
+
   json response = {{"status", "success"},
                    {"message", "File uploaded successfully"}};
+  boost::asio::write(socket, boost::asio::buffer(response.dump() + "<END>"));
+}
+
+// 파일 목록 조회 처리
+void handle_list_files(tcp::socket& socket) {
+  json metadata = read_file_metadata();
+
+  json response = {{"status", "success"}, {"files", metadata}};
   boost::asio::write(socket, boost::asio::buffer(response.dump() + "<END>"));
 }
 
@@ -83,22 +111,7 @@ void handle_download(tcp::socket& socket, const json& request_json) {
   boost::asio::write(socket, boost::asio::buffer(response.dump() + "<END>"));
 }
 
-// 파일 목록 조회 처리
-void handle_list_files(tcp::socket& socket) {
-  std::cout << "get file list" << std::endl;
-  json response = {{"status", "success"}, {"files", json::array()}};
-
-  for (const auto& entry : fs::directory_iterator(".")) {
-    if (entry.is_regular_file()) {
-      std::cout << entry.path().filename().string() << fs::file_size(entry)
-                << std::endl;
-      response["files"].push_back({{"name", entry.path().filename().string()},
-                                   {"size", fs::file_size(entry)}});
-    }
-  }
-
-  boost::asio::write(socket, boost::asio::buffer(response.dump() + "<END>"));
-}
+// 요청 처리
 void handle_request(tcp::socket& socket) {
   while (true) {
     char buffer[2048];
