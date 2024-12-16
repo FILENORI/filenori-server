@@ -89,23 +89,23 @@ void handle_upload(tcp::socket& socket, const json& request_json) {
     boost::asio::write(socket, boost::asio::buffer(response.dump() + "<END>"));
   }
 
-  char buffer[1024];
-  std::size_t bytes_received = 0;
+  // char buffer[1024];
+  // std::size_t bytes_received = 0;
 
-  while (bytes_received < file_size) {
-    boost::system::error_code error;
-    size_t len = socket.read_some(boost::asio::buffer(buffer), error);
+  // while (bytes_received < file_size) {
+  //   boost::system::error_code error;
+  //   size_t len = socket.read_some(boost::asio::buffer(buffer), error);
 
-    if (error == boost::asio::error::eof) {
-      break;
-    } else if (error) {
-      throw boost::system::system_error(error);
-    }
+  //   if (error == boost::asio::error::eof) {
+  //     break;
+  //   } else if (error) {
+  //     throw boost::system::system_error(error);
+  //   }
 
-    file.write(buffer, len);
-    bytes_received += len;
-  }
-  file.close();
+  //   file.write(buffer, len);
+  //   bytes_received += len;
+  // }
+  // file.close();
 
   // 파일 메타데이터 저장
   json metadata = read_file_metadata();
