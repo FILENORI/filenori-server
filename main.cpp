@@ -20,29 +20,44 @@ const std::string FILE_METADATA_JSON = "file_metadata.json";
 
 // UUID 생성 함수
 std::string generate_uuid() {
-  boost::uuids::uuid uuid = boost::uuids::random_generator()();
+  boost::uuids::random_generator generator;
+  boost::uuids::uuid uuid = generator();
   return boost::uuids::to_string(uuid);
+}
+
+// JSON 파일에 메타데이터 저장
+void write_file_metadata(const json& metadata) {
+  std::ofstream file(FILE_METADATA_JSON);
+  if (!file.is_open()) {
+    std::cerr << "메타데이터 파일을 열 수 없습니다: " << FILE_METADATA_JSON << std::endl;
+    return;
+  }
+  
+  try {
+    file << metadata.dump(2);  // 들여쓰기를 사용하여 보기 좋게 저장
+  } catch (const json::exception& e) {
+    std::cerr << "JSON 저장 에러: " << e.what() << std::endl;
+  }
 }
 
 // JSON 파일에서 메타데이터 읽기
 json read_file_metadata() {
   std::ifstream file(FILE_METADATA_JSON);
   if (!file.is_open()) {
-    return json::array();  // JSON 파일이 없으면 빈 배열 반환
+    // 파일이 없으면 새로 생성
+    json empty_metadata = json::array();
+    write_file_metadata(empty_metadata);
+    return empty_metadata;
   }
+  
   json metadata;
-  file >> metadata;
-  return metadata;
-}
-
-// JSON 파일에 메타데이터 저장
-void write_file_metadata(const json& metadata) {
-  std::ofstream file(FILE_METADATA_JSON, std::ios::trunc);
-  if (!file.is_open()) {
-    std::cerr << "Failed to open metadata file for writing" << std::endl;
-    return;
+  try {
+    file >> metadata;
+  } catch (const json::parse_error& e) {
+    std::cerr << "JSON 파싱 에러: " << e.what() << std::endl;
+    return json::array();
   }
-  file << metadata.dump(4);  // 예쁘게 저장
+  return metadata;
 }
 
 // Heartbeat 처리
@@ -66,7 +81,7 @@ void handle_upload(tcp::socket& socket, const json& request_json) {
   std::ofstream file(file_name, std::ios::binary);
   if (!file.is_open()) {
     json response = {{"status", "error"},
-                     {"message", "Failed to open file for writing"}};
+                    {"message", "Failed to open file for writing"}};
     boost::asio::write(socket, boost::asio::buffer(response.dump() + "<END>"));
     return;
   } else {
@@ -99,7 +114,7 @@ void handle_upload(tcp::socket& socket, const json& request_json) {
   write_file_metadata(metadata);
 
   json response = {{"status", "success"},
-                   {"message", "File uploaded successfully"},
+                  {"message", "File uploaded successfully"},
                    {"uuid", uuid}};
   boost::asio::write(socket, boost::asio::buffer(response.dump() + "<END>"));
 }
