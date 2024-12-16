@@ -54,7 +54,7 @@ void handle_heartbeat(tcp::socket& socket, const json& request_json) {
   peer_file_map[peer_ip] = files;
 
   json response = {{"status", "success"}, {"message", "Heartbeat received"}};
-  boost::asio::write(socket, boost::asio::buffer(response.dump() + "<END>"));
+  boost::asio::write(socket, boost::asio::buffer(response.dump()));
 }
 
 // 파일 업로드 처리
@@ -184,17 +184,32 @@ void handle_request(tcp::socket& socket) {
     size_t bytes_read = socket.read_some(boost::asio::buffer(buffer), error);
 
     if (error == boost::asio::error::eof) {
-      std::cout << "Connection closed by client" << std::endl;
       break;
     } else if (error) {
       throw boost::system::system_error(error);
     }
 
     std::string request_str(buffer, bytes_read);
-    std::cout << "Received request: " << request_str << std::endl;
 
     try {
-      json request_json = json::parse(request_str);
+      json request_json;
+      std::string delimiter = "<END>";
+      size_t pos = request_str.find(delimiter);
+
+      if (pos != std::string::npos) {
+          std::string json_str = request_str.substr(0, pos); // JSON 부분 추출
+          std::cout << "Extracted JSON string: " << json_str << std::endl;
+
+          try {
+              // JSON 파싱
+              request_json = json::parse(json_str);
+              std::cout << "Parsed JSON: " << request_json.dump(4) << std::endl;
+          } catch (const json::parse_error& e) {
+              std::cerr << "JSON parsing error: " << e.what() << std::endl;
+          }
+      } else {
+          std::cerr << "Delimiter '<END>' not found in request_str." << std::endl;
+      }
       std::string action = request_json["action"];
 
       if (action == "upload") {
