@@ -83,7 +83,7 @@ class RequestHandler {
     //   std::streamsize bytesRead = file.gcount();
     //   boost::asio::write(socket, boost::asio::buffer(buffer, bytesRead));
     // }
-    file.close();
+    // file.close();
 
     json response = {{"status", "success"},
                      {"ip", "1.233.64.47"},
