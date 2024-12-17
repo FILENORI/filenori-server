@@ -25,6 +25,7 @@ class PeerQueueManager {
 
   std::vector<std::string> findPeersByFileId(const std::string& fileId) const {
     std::vector<std::string> peers;
+    std::cout << "test" << std::endl;
     for (const auto& [peer, files] : peerFileMap) {
       for (const auto& file : files) {
         std::cout << "Checking file: " << file << " against fileId: " << fileId
