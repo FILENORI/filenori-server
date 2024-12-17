@@ -60,22 +60,22 @@ class RequestHandler {
   }
 
   void handleDownload(tcp::socket& socket, const json& request) {
-    std::string fileId = request["file_id"];
-    std::string fileName = fileManager.getFileName(fileId);
-    std::ifstream file(fileName, std::ios::binary);
-    std::vector<std::string> peers = peerQueueManager.findPeersByFileId(fileId);
-    if (peers.empty()) {
-      json response = {{"status", "error"}, {"message", "Peer not found"}};
-      boost::asio::write(socket,
-                         boost::asio::buffer(response.dump() + "<END>"));
-      return;
-    }
-    if (!file.is_open()) {
-      json response = {{"status", "error"}, {"message", "File not found"}};
-      boost::asio::write(socket,
-                         boost::asio::buffer(response.dump() + "<END>"));
-      return;
-    }
+    // std::string fileId = request["file_id"];
+    // std::string fileName = fileManager.getFileName(fileId);
+    // std::ifstream file(fileName, std::ios::binary);
+    // std::vector<std::string> peers =
+    // peerQueueManager.findPeersByFileId(fileId); if (peers.empty()) {
+    //   json response = {{"status", "error"}, {"message", "Peer not found"}};
+    //   boost::asio::write(socket,
+    //                      boost::asio::buffer(response.dump() + "<END>"));
+    //   return;
+    // }
+    // if (!file.is_open()) {
+    //   json response = {{"status", "error"}, {"message", "File not found"}};
+    //   boost::asio::write(socket,
+    //                      boost::asio::buffer(response.dump() + "<END>"));
+    //   return;
+    // }
 
     // char buffer[1024];
     // while (file.good()) {
@@ -86,7 +86,7 @@ class RequestHandler {
     file.close();
 
     json response = {{"status", "success"},
-                     {"ip", peers[0]},
+                     {"ip", "1.233.64.47"},
                      {"message", "File downloaded successfully"}};
     std::cout << response << std::endl;
     boost::asio::write(socket, boost::asio::buffer(response.dump() + "<END>"));
