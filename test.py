@@ -37,21 +37,21 @@ def upload_file(file_path, file_name, client):
     print("metadata sent")
 
     # Send raw file data
-    client.sendall(data)
-    print("All data sent to server")
+    # client.sendall(data)
+    # print("All data sent to server")
 
     response = b""
-    while True:
-        print('a')
-        chunk = client.recv(2048)
-        if b"<END>" in chunk:
-            response += chunk.split(b'<END>')[0]
-            break
-        response += chunk
-        print('response')
-        print(response)
-        print("Raw Response:", response.decode())
-        return json.loads(response.decode())
+    # while True:
+    #     print('a')
+    #     chunk = client.recv(2048)
+    #     if b"<END>" in chunk:
+    #         response += chunk.split(b'<END>')[0]
+    #         break
+    #     response += chunk
+    #     print('response')
+    #     print(response)
+    #     print("Raw Response:", response.decode())
+    #     return json.loads(response.decode())
     print(response)
     print(f"File {file_name} uploaded successfully.")
 
@@ -68,13 +68,13 @@ def download_file(file_id, save_path, client):
     client.sendall(json.dumps({"action": "download", "file_id": file_id}).encode())
 
     # Receive file data
-    with open(save_path, "wb") as f:
-        while True:
-            chunk = client.recv(2048)
-            if b"<END>" in chunk:
-                f.write(chunk.split(b'<END>')[0])
-                break
-            f.write(chunk)
+    # with open(save_path, "wb") as f:
+    #     while True:
+    #         chunk = client.recv(2048)
+    #         if b"<END>" in chunk:
+    #             f.write(chunk.split(b'<END>')[0])
+    #             break
+    #         f.write(chunk)
 
     print(f"File {file_id} downloaded and saved to {save_path}")
 
@@ -118,10 +118,10 @@ if __name__ == "__main__":
 
         list_peers(client)
 
-        file_id = "42b39d9b-dfd1-4eaa-8daa-75dfced71cf0"
+        file_id = "4554f2b0-5f2b-4fde-9aea-7f91e8497f70"
         find_file(file_id, client)
 
         send_heartbeat("127.0.0.1", [file_id], client)
 
         # Test file download
-        download_file(file_id, "downloaded_test_image.webp", client)
+        # download_file(file_id, "downloaded_test_image.webp", client)
